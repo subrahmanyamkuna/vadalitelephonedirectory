@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Private Phone Directory</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body{font-family:Arial;background:#f2f2f2;padding:20px}
+.box{background:white;padding:20px;border-radius:10px;max-width:500px;margin:auto}
+input,button{padding:10px;margin:5px;width:95%}
+.contact{background:#e9f3ff;padding:10px;margin:5px;border-radius:6px}
+</style>
+</head>
+
+<body>
+
+<div class="box" id="authBox">
+<h2>Login / Signup</h2>
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="signup()">Sign Up</button>
+<button onclick="login()">Login</button>
+<p id="msg"></p>
+</div>
+
+<div class="box" id="appBox" style="display:none">
+<h2>📞 My Phone Directory</h2>
+
+<input id="name" placeholder="Name">
+<input id="phone" placeholder="Mobile Number">
+<button onclick="addContact()">Add Contact</button>
+
+<hr>
+
+<input id="search" placeholder="Search min 3 letters or numbers" onkeyup="searchContacts()">
+
+<div id="results"></div>
+
+<br>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+// 🔴 REPLACE THESE 2 VALUES
+const supabase = window.supabase.createClient(
+  "https://pgkzechdqxvogvrpfjxt.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBna3plY2hkcXh2b2d2cnBmanh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MDA0NDUsImV4cCI6MjA5MjE3NjQ0NX0.qj22KxdEnu3SbweXAAnBveozDmYScUXXvukNuWCjgdE"
+);
+
+let currentUser=null;
+
+// SIGNUP
+async function signup(){
+  const email=document.getElementById("email").value;
+  const password=document.getElementById("password").value;
+  const {error}=await supabase.auth.signUp({email,password});
+  document.getElementById("msg").innerText = error? error.message : "Signup Success! Now Login";
+}
+
+// LOGIN
+async function login(){
+  const email=document.getElementById("email").value;
+  const password=document.getElementById("password").value;
+
+  const {data,error}=await supabase.auth.signInWithPassword({email,password});
+  if(error){document.getElementById("msg").innerText=error.message;return;}
+
+  currentUser=data.user;
+  document.getElementById("authBox").style.display="none";
+  document.getElementById("appBox").style.display="block";
+}
+
+// LOGOUT
+async function logout(){
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+// ADD CONTACT
+async function addContact(){
+  const name=document.getElementById("name").value;
+  const phone=document.getElementById("phone").value;
+
+  if(name==""||phone==""){alert("Enter name & phone");return;}
+
+  await supabase.from("contacts").insert([
+    {user_id:currentUser.id,name:name,phone:phone}
+  ]);
+
+  alert("Contact Added");
+}
+
+// SEARCH CONTACT
+async function searchContacts(){
+  const text=document.getElementById("search").value;
+  if(text.length<3){document.getElementById("results").innerHTML="";return;}
+
+  const {data}=await supabase
+    .from("contacts")
+    .select("*")
+    .or(`name.ilike.%${text}%,phone.ilike.%${text}%`);
+
+  let html="";
+  data.forEach(c=>{
+    html+=`
+    <div class="contact">
+      <b>${c.name}</b><br>
+      ${c.phone}<br>
+      <a href="tel:${c.phone}">
+        <button>☎️ Call</button>
+      </a>
+    </div>`;
+  });
+
+  document.getElementById("results").innerHTML=html;
+}
+</script>
+
+</body>
+</html>
